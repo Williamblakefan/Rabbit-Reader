@@ -1,0 +1,2137 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Rabbit Reader</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --bg-primary: #1a1a2e;
+            --bg-secondary: #16213e;
+            --bg-tertiary: #0f3460;
+            --text-primary: #eaeaea;
+            --text-secondary: #a0a0a0;
+            --accent: #e94560;
+            --accent-hover: #ff6b6b;
+            --success: #4ecca3;
+            --border: #2a2a4a;
+        }
+
+        .light-mode {
+            --bg-primary: #f5f5f5;
+            --bg-secondary: #ffffff;
+            --bg-tertiary: #e8e8e8;
+            --text-primary: #1a1a2e;
+            --text-secondary: #666666;
+            --accent: #e94560;
+            --accent-hover: #d63850;
+            --success: #2d9a6e;
+            --border: #d0d0d0;
+        }
+
+        body {
+            font-family: var(--font-family, 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif);
+            background-color: var(--bg-primary);
+            color: var(--text-primary);
+            min-height: 100vh;
+            transition: all 0.3s ease;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 15px 0;
+            border-bottom: 1px solid var(--border);
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+
+        h1 {
+            font-size: 1.8rem;
+            color: var(--accent);
+        }
+
+        .title-with-rabbit {
+            display: flex;
+            align-items: flex-end;
+            gap: 10px;
+        }
+
+        .rabbit-track {
+            width: 150px;
+            height: 35px;
+            position: relative;
+            overflow: visible;
+        }
+
+        .rabbit {
+            position: absolute;
+            bottom: 23px;
+            left: -30px;
+            transform: scaleX(-1);
+            animation: hop-across 1.5s ease-out forwards;
+        }
+
+        /* 8-bit pixel rabbit using box-shadow - side view */
+        .rabbit-pixel {
+            width: 3px;
+            height: 3px;
+            background: transparent;
+            box-shadow:
+                /* Back ear */
+                12px 0 0 #ccc,
+                12px -3px 0 #ccc,
+                12px -6px 0 #ccc,
+                12px -9px 0 #ccc,
+                /* Front ear */
+                15px 0 0 #fff,
+                15px -3px 0 #fff,
+                15px -6px 0 #fff,
+                15px -9px 0 #fff,
+                15px -12px 0 #fff,
+                18px -9px 0 #fff,
+                18px -6px 0 #fff,
+                /* Ear pink inside */
+                15px -3px 0 #ffb6c1,
+                15px -6px 0 #ffb6c1,
+                /* Head */
+                6px 3px 0 #fff,
+                9px 3px 0 #fff,
+                12px 3px 0 #fff,
+                15px 3px 0 #fff,
+                18px 3px 0 #fff,
+                3px 6px 0 #fff,
+                6px 6px 0 #fff,
+                9px 6px 0 #fff,
+                12px 6px 0 #fff,
+                15px 6px 0 #fff,
+                18px 6px 0 #fff,
+                21px 6px 0 #fff,
+                3px 9px 0 #fff,
+                6px 9px 0 #fff,
+                9px 9px 0 #fff,
+                12px 9px 0 #fff,
+                15px 9px 0 #fff,
+                18px 9px 0 #fff,
+                21px 9px 0 #fff,
+                /* Eye */
+                6px 6px 0 #e94560,
+                /* Nose */
+                3px 9px 0 #ffb6c1,
+                /* Body */
+                18px 12px 0 #fff,
+                21px 12px 0 #fff,
+                24px 12px 0 #fff,
+                27px 12px 0 #fff,
+                30px 12px 0 #fff,
+                15px 15px 0 #fff,
+                18px 15px 0 #fff,
+                21px 15px 0 #fff,
+                24px 15px 0 #fff,
+                27px 15px 0 #fff,
+                30px 15px 0 #fff,
+                33px 15px 0 #fff,
+                18px 18px 0 #fff,
+                21px 18px 0 #fff,
+                24px 18px 0 #fff,
+                27px 18px 0 #fff,
+                30px 18px 0 #fff,
+                33px 18px 0 #fff,
+                21px 21px 0 #fff,
+                24px 21px 0 #fff,
+                27px 21px 0 #fff,
+                30px 21px 0 #fff,
+                /* Tail */
+                36px 12px 0 #fff,
+                39px 9px 0 #fff,
+                39px 12px 0 #fff,
+                /* Front legs */
+                15px 24px 0 #fff,
+                18px 24px 0 #fff,
+                /* Back legs */
+                30px 24px 0 #fff,
+                33px 24px 0 #fff;
+        }
+
+        /* Dust particles */
+        .dust {
+            position: absolute;
+            bottom: 20px;
+            width: 3px;
+            height: 3px;
+            background: transparent;
+            opacity: 0;
+        }
+
+        .dust-1 {
+            left: 20px;
+            animation: dust-puff 0.8s ease-out forwards;
+            animation-delay: 0.35s;
+        }
+        .dust-2 {
+            left: 60px;
+            animation: dust-puff 0.8s ease-out forwards;
+            animation-delay: 0.75s;
+        }
+        .dust-3 {
+            left: 100px;
+            animation: dust-puff 0.8s ease-out forwards;
+            animation-delay: 1.15s;
+        }
+
+        @keyframes hop-across {
+            0% {
+                left: -30px;
+                transform: scaleX(-1) translateY(0);
+            }
+            /* First hop up */
+            15% {
+                left: 5px;
+                transform: scaleX(-1) translateY(-12px);
+            }
+            /* First land */
+            30% {
+                left: 20px;
+                transform: scaleX(-1) translateY(0);
+            }
+            /* Second hop up */
+            45% {
+                left: 45px;
+                transform: scaleX(-1) translateY(-12px);
+            }
+            /* Second land */
+            60% {
+                left: 60px;
+                transform: scaleX(-1) translateY(0);
+            }
+            /* Third hop up */
+            75% {
+                left: 85px;
+                transform: scaleX(-1) translateY(-12px);
+            }
+            /* Third land and stop */
+            90%, 100% {
+                left: 100px;
+                transform: scaleX(-1) translateY(0);
+            }
+        }
+
+        @keyframes dust-puff {
+            0% {
+                opacity: 0;
+                box-shadow: none;
+            }
+            10% {
+                opacity: 1;
+                box-shadow:
+                    0 0 0 #888,
+                    -4px -2px 0 #888,
+                    4px -2px 0 #888,
+                    -8px -4px 0 #666,
+                    8px -4px 0 #666,
+                    0px -6px 0 #666;
+            }
+            40% {
+                opacity: 0.7;
+                box-shadow:
+                    0 -4px 0 #888,
+                    -6px -8px 0 #888,
+                    6px -8px 0 #888,
+                    -12px -12px 0 #666,
+                    12px -12px 0 #666,
+                    0px -16px 0 #666;
+            }
+            100% {
+                opacity: 0;
+                box-shadow:
+                    0 -10px 0 transparent,
+                    -10px -16px 0 transparent,
+                    10px -16px 0 transparent,
+                    -16px -20px 0 transparent,
+                    16px -20px 0 transparent,
+                    0px -24px 0 transparent;
+            }
+        }
+
+        .header-controls {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+
+        button {
+            background-color: var(--bg-tertiary);
+            color: var(--text-primary);
+            border: 1px solid var(--border);
+            padding: 8px 16px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.9rem;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        button:hover {
+            background-color: var(--accent);
+            border-color: var(--accent);
+        }
+
+        button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        button.primary {
+            background-color: var(--accent);
+            border-color: var(--accent);
+        }
+
+        button.primary:hover {
+            background-color: var(--accent-hover);
+        }
+
+        .main-content {
+            display: grid;
+            grid-template-columns: 280px 1fr;
+            gap: 20px;
+            min-height: calc(100vh - 150px);
+        }
+
+        @media (max-width: 900px) {
+            .main-content {
+                grid-template-columns: 1fr;
+            }
+            .sidebar {
+                order: 2;
+            }
+        }
+
+        .sidebar {
+            background-color: var(--bg-secondary);
+            border-radius: 10px;
+            padding: 15px;
+            border: 1px solid var(--border);
+            height: fit-content;
+            max-height: calc(100vh - 150px);
+            overflow-y: auto;
+        }
+
+        .sidebar h2 {
+            font-size: 1rem;
+            margin-bottom: 15px;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .file-list {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .file-item {
+            background-color: var(--bg-tertiary);
+            padding: 12px;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            border: 2px solid transparent;
+        }
+
+        .file-item:hover {
+            border-color: var(--accent);
+        }
+
+        .file-item.active {
+            border-color: var(--accent);
+            background-color: rgba(233, 69, 96, 0.1);
+        }
+
+        .file-item-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: start;
+            gap: 8px;
+        }
+
+        .file-item-title {
+            font-weight: 600;
+            font-size: 0.9rem;
+            word-break: break-word;
+        }
+
+        .file-item-meta {
+            font-size: 0.75rem;
+            color: var(--text-secondary);
+            margin-top: 6px;
+        }
+
+        .file-item-progress {
+            height: 4px;
+            background-color: var(--bg-primary);
+            border-radius: 2px;
+            margin-top: 8px;
+            overflow: hidden;
+        }
+
+        .file-item-progress-bar {
+            height: 100%;
+            background-color: var(--success);
+            transition: width 0.3s ease;
+        }
+
+        .delete-file-btn {
+            background: none;
+            border: none;
+            color: var(--text-secondary);
+            padding: 4px;
+            font-size: 1rem;
+            min-width: auto;
+        }
+
+        .delete-file-btn:hover {
+            color: var(--accent);
+            background: none;
+        }
+
+        .reader-area {
+            background-color: var(--bg-secondary);
+            border-radius: 10px;
+            padding: 20px;
+            border: 1px solid var(--border);
+            display: flex;
+            flex-direction: column;
+        }
+
+        .upload-area {
+            border: 2px dashed var(--border);
+            border-radius: 10px;
+            padding: 60px 20px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            margin-bottom: 20px;
+        }
+
+        .upload-area:hover {
+            border-color: var(--accent);
+            background-color: rgba(233, 69, 96, 0.05);
+        }
+
+        .upload-area.dragover {
+            border-color: var(--accent);
+            background-color: rgba(233, 69, 96, 0.1);
+        }
+
+        .paste-area {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            margin-bottom: 20px;
+        }
+
+        .paste-area textarea {
+            width: 100%;
+            min-height: 200px;
+            background-color: var(--bg-tertiary);
+            color: var(--text-primary);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 15px;
+            font-size: 1rem;
+            resize: vertical;
+            font-family: inherit;
+        }
+
+        .paste-area textarea:focus {
+            outline: none;
+            border-color: var(--accent);
+        }
+
+        .paste-area button {
+            align-self: flex-end;
+        }
+
+        .paste-area.hidden {
+            display: none;
+        }
+
+        .upload-icon {
+            font-size: 3rem;
+            margin-bottom: 15px;
+        }
+
+        .upload-text {
+            font-size: 1.1rem;
+            margin-bottom: 8px;
+        }
+
+        .upload-subtext {
+            font-size: 0.85rem;
+            color: var(--text-secondary);
+        }
+
+        #fileInput {
+            display: none;
+        }
+
+        .speed-display {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            flex: 1;
+            justify-content: center;
+            min-height: 300px;
+            position: relative;
+        }
+
+        .focal-container {
+            position: relative;
+            width: 100%;
+            height: 120px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .guide-line {
+            position: absolute;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 3px;
+            height: 25px;
+            background-color: var(--accent);
+            z-index: 10;
+        }
+
+        .guide-line.top {
+            top: 0;
+        }
+
+        .guide-line.bottom {
+            bottom: 0;
+        }
+
+        .word-display {
+            position: absolute;
+            left: 0;
+            right: 0;
+            top: 50%;
+            transform: translateY(-50%);
+            font-size: var(--reader-font-size, 3rem);
+            font-weight: 600;
+            white-space: nowrap;
+            z-index: 1;
+            display: flex;
+            align-items: center;
+        }
+
+        .word-left {
+            flex: 1;
+            text-align: right;
+            min-width: 0;
+        }
+
+        .focal-letter {
+            color: var(--accent);
+            flex-shrink: 0;
+        }
+
+        .word-right {
+            flex: 1;
+            text-align: left;
+            min-width: 0;
+        }
+
+        .progress-section {
+            margin-top: 20px;
+            width: 100%;
+        }
+
+        .progress-info {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 8px;
+            font-size: 0.85rem;
+            color: var(--text-secondary);
+        }
+
+        .progress-bar-container {
+            height: 12px;
+            background-color: var(--bg-tertiary);
+            border-radius: 6px;
+            overflow: hidden;
+            cursor: pointer;
+            position: relative;
+        }
+
+        .progress-bar-container:hover {
+            height: 14px;
+        }
+
+        .progress-bar {
+            height: 100%;
+            background-color: var(--accent);
+            pointer-events: none;
+        }
+
+        .controls-section {
+            margin-top: 20px;
+            padding-top: 20px;
+            border-top: 1px solid var(--border);
+        }
+
+        .wpm-display {
+            text-align: center;
+            margin-bottom: 15px;
+        }
+
+        .wpm-value {
+            font-size: 2rem;
+            font-weight: 700;
+            color: var(--accent);
+        }
+
+        .wpm-label {
+            font-size: 0.85rem;
+            color: var(--text-secondary);
+        }
+
+        .control-row {
+            display: flex;
+            justify-content: center;
+            gap: 8px;
+            margin-bottom: 12px;
+            flex-wrap: wrap;
+        }
+
+        .control-btn {
+            min-width: 50px;
+            justify-content: center;
+        }
+
+        .control-btn.large {
+            min-width: 80px;
+            padding: 12px 20px;
+        }
+
+        .settings-panel {
+            background-color: var(--bg-secondary);
+            border-radius: 10px;
+            padding: 20px;
+            border: 1px solid var(--border);
+            margin-top: 20px;
+            display: none;
+        }
+
+        .settings-panel.visible {
+            display: block;
+        }
+
+        .settings-tabs {
+            display: flex;
+            gap: 5px;
+            margin-bottom: 20px;
+            border-bottom: 1px solid var(--border);
+            padding-bottom: 10px;
+        }
+
+        .settings-tab {
+            padding: 8px 16px;
+            background: none;
+            border: none;
+            color: var(--text-secondary);
+            cursor: pointer;
+            border-radius: 6px 6px 0 0;
+            font-size: 0.9rem;
+        }
+
+        .settings-tab:hover {
+            color: var(--text-primary);
+            background-color: var(--bg-tertiary);
+        }
+
+        .settings-tab.active {
+            color: var(--accent);
+            background-color: var(--bg-tertiary);
+            border-bottom: 2px solid var(--accent);
+        }
+
+        .settings-tab-content {
+            display: none;
+        }
+
+        .settings-tab-content.active {
+            display: block;
+        }
+
+        .settings-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+        }
+
+        .color-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 15px;
+        }
+
+        .color-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .color-item label {
+            flex: 1;
+            font-size: 0.85rem;
+            color: var(--text-secondary);
+        }
+
+        .setting-group {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .setting-label {
+            font-size: 0.85rem;
+            color: var(--text-secondary);
+        }
+
+        .setting-control {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        input[type="range"] {
+            flex: 1;
+            height: 6px;
+            -webkit-appearance: none;
+            background: var(--bg-tertiary);
+            border-radius: 3px;
+            outline: none;
+        }
+
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 18px;
+            height: 18px;
+            background: var(--accent);
+            border-radius: 50%;
+            cursor: pointer;
+        }
+
+        select {
+            background-color: var(--bg-tertiary);
+            color: var(--text-primary);
+            border: 1px solid var(--border);
+            padding: 8px 12px;
+            border-radius: 6px;
+            font-size: 0.9rem;
+            cursor: pointer;
+        }
+
+        input[type="color"] {
+            width: 40px;
+            height: 40px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            background: none;
+        }
+
+        .toggle-switch {
+            position: relative;
+            width: 50px;
+            height: 26px;
+            background-color: var(--bg-tertiary);
+            border-radius: 13px;
+            cursor: pointer;
+            transition: background-color 0.2s ease;
+        }
+
+        .toggle-switch.active {
+            background-color: var(--accent);
+        }
+
+        .toggle-switch::after {
+            content: '';
+            position: absolute;
+            top: 3px;
+            left: 3px;
+            width: 20px;
+            height: 20px;
+            background-color: var(--text-primary);
+            border-radius: 50%;
+            transition: transform 0.2s ease;
+        }
+
+        .toggle-switch.active::after {
+            transform: translateX(24px);
+        }
+
+        .full-text-view {
+            display: none;
+            flex-direction: column;
+            height: 100%;
+        }
+
+        .full-text-view.visible {
+            display: flex;
+        }
+
+        .full-text-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px 0;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        .full-text-header h3 {
+            font-size: 1.1rem;
+            margin: 0;
+        }
+
+        .full-text-controls {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .text-size-btn {
+            padding: 6px 12px;
+            font-size: 0.85rem;
+            min-width: auto;
+        }
+
+        .full-text-size-label {
+            font-size: 0.8rem;
+            color: var(--text-secondary);
+        }
+
+        .full-text-content {
+            flex: 1;
+            padding: 20px;
+            overflow-y: auto;
+            line-height: 1.7;
+            font-size: var(--full-text-size, 0.9rem);
+            user-select: text;
+            white-space: pre-wrap;
+            background-color: var(--bg-tertiary);
+            border-radius: 8px;
+        }
+
+        .full-text-content::selection {
+            background-color: var(--accent);
+            color: white;
+        }
+
+        .speed-reader-view {
+            display: flex;
+            flex-direction: column;
+            height: 100%;
+        }
+
+        .speed-reader-view.hidden {
+            display: none;
+        }
+
+        .ocr-status {
+            background-color: var(--bg-tertiary);
+            padding: 15px;
+            border-radius: 8px;
+            text-align: center;
+            margin-bottom: 15px;
+        }
+
+        .ocr-progress {
+            height: 6px;
+            background-color: var(--bg-primary);
+            border-radius: 3px;
+            margin-top: 10px;
+            overflow: hidden;
+        }
+
+        .ocr-progress-bar {
+            height: 100%;
+            background-color: var(--accent);
+            transition: width 0.3s ease;
+        }
+
+        .keyboard-shortcuts {
+            background-color: var(--bg-tertiary);
+            padding: 15px;
+            border-radius: 8px;
+            margin-top: 15px;
+        }
+
+        .shortcuts-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 10px;
+            margin-top: 10px;
+        }
+
+        .shortcut-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 0.85rem;
+        }
+
+        .shortcut-key {
+            background-color: var(--bg-primary);
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-family: monospace;
+            font-size: 0.8rem;
+        }
+
+        .no-file-message {
+            text-align: center;
+            padding: 40px;
+            color: var(--text-secondary);
+        }
+
+        .hidden {
+            display: none !important;
+        }
+
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.7);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal.visible {
+            display: flex;
+        }
+
+        .modal-content {
+            background-color: var(--bg-secondary);
+            padding: 30px;
+            border-radius: 10px;
+            max-width: 500px;
+            width: 90%;
+            border: 1px solid var(--border);
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .modal-header h2 {
+            font-size: 1.2rem;
+        }
+
+        .modal-body textarea {
+            width: 100%;
+            height: 200px;
+            background-color: var(--bg-tertiary);
+            color: var(--text-primary);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            padding: 12px;
+            font-size: 1rem;
+            resize: vertical;
+        }
+
+        .modal-footer {
+            display: flex;
+            justify-content: flex-end;
+            gap: 10px;
+            margin-top: 20px;
+        }
+
+        .modal-upload-section {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 10px;
+        }
+
+        .modal-upload-btn {
+            display: inline-block;
+            background-color: var(--bg-tertiary);
+            color: var(--text-primary);
+            border: 1px solid var(--border);
+            padding: 10px 16px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.9rem;
+            transition: all 0.2s ease;
+        }
+
+        .modal-upload-btn:hover {
+            background-color: var(--accent);
+            border-color: var(--accent);
+        }
+
+        .toast {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            background-color: var(--success);
+            color: white;
+            padding: 12px 20px;
+            border-radius: 8px;
+            opacity: 0;
+            transform: translateY(20px);
+            transition: all 0.3s ease;
+            z-index: 1001;
+        }
+
+        .toast.visible {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <div class="title-with-rabbit">
+                <h1>Rabbit Reader</h1>
+                <div class="rabbit-track">
+                    <div class="rabbit">
+                        <div class="rabbit-pixel"></div>
+                    </div>
+                    <div class="dust dust-1"></div>
+                    <div class="dust dust-2"></div>
+                    <div class="dust dust-3"></div>
+                </div>
+            </div>
+            <div class="header-controls">
+                <button id="addTextBtn" title="Add text manually">+ Add Text</button>
+                <button id="settingsBtn" title="Settings">⚙ Settings</button>
+                <button id="themeToggle" title="Toggle theme">☀ Light</button>
+            </div>
+        </header>
+
+        <div class="main-content">
+            <aside class="sidebar">
+                <h2>Your Files</h2>
+                <div id="fileList" class="file-list">
+                    <p class="no-file-message">No files yet. Upload or paste text to begin.</p>
+                </div>
+            </aside>
+
+            <main class="reader-area">
+                <div class="upload-area" id="uploadArea">
+                    <div class="upload-icon">📄</div>
+                    <div class="upload-text">Drop files here or click to upload</div>
+                    <div class="upload-subtext">Supports TXT, PDF, DOC, images (OCR), and more</div>
+                    <input type="file" id="fileInput" accept=".txt,.pdf,.doc,.docx,.rtf,.png,.jpg,.jpeg,.gif,.bmp,.webp">
+                </div>
+
+                <div class="paste-area" id="pasteArea">
+                    <textarea id="pasteTextarea" placeholder="Or paste your text here..."></textarea>
+                    <button id="startReadingBtn" class="primary">Start Reading</button>
+                </div>
+
+                <div id="ocrStatus" class="ocr-status hidden">
+                    <div>Processing file with OCR...</div>
+                    <div class="ocr-progress">
+                        <div id="ocrProgressBar" class="ocr-progress-bar" style="width: 0%"></div>
+                    </div>
+                </div>
+
+                <div id="speedReaderView" class="speed-reader-view hidden">
+                    <div class="speed-display">
+                        <div class="focal-container">
+                            <div class="guide-line top"></div>
+                            <div class="guide-line bottom"></div>
+                            <div id="wordDisplay" class="word-display">
+                                <span class="word-left"></span><span class="focal-letter">R</span><span class="word-right">eady</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="progress-section">
+                        <div class="progress-info">
+                            <span id="positionInfo">Word 0 of 0</span>
+                            <span id="percentInfo">0%</span>
+                        </div>
+                        <div class="progress-bar-container" id="progressBarContainer">
+                            <div id="progressBar" class="progress-bar" style="width: 0%"></div>
+                        </div>
+                    </div>
+
+                    <div class="controls-section">
+                        <div class="wpm-display">
+                            <div class="wpm-value"><span id="wpmValue">300</span></div>
+                            <div class="wpm-label">words per minute</div>
+                        </div>
+
+                        <div class="control-row">
+                            <button class="control-btn" id="rewind10Btn" title="Rewind 10s">⏪ 10s</button>
+                            <button class="control-btn" id="rewind5Btn" title="Rewind 5s">◀ 5s</button>
+                            <button class="control-btn large primary" id="playPauseBtn" title="Play/Pause">▶ Play</button>
+                            <button class="control-btn" id="forward5Btn" title="Forward 5s">5s ▶</button>
+                            <button class="control-btn" id="forward10Btn" title="Forward 10s">10s ⏩</button>
+                        </div>
+
+                        <div class="control-row">
+                            <button class="control-btn" id="slowDownBtn" title="Slow down">− Slower</button>
+                            <button class="control-btn" id="speedUpBtn" title="Speed up">+ Faster</button>
+                            <button class="control-btn" id="viewFullTextBtn" title="View full text">📖 Full Text</button>
+                        </div>
+                    </div>
+
+                    <div class="keyboard-shortcuts">
+                        <strong>Keyboard Shortcuts</strong>
+                        <div class="shortcuts-grid">
+                            <div class="shortcut-item"><span class="shortcut-key">Space</span> Play/Pause</div>
+                            <div class="shortcut-item"><span class="shortcut-key">←</span> Rewind 5s</div>
+                            <div class="shortcut-item"><span class="shortcut-key">→</span> Forward 5s</div>
+                            <div class="shortcut-item"><span class="shortcut-key">↑</span> Speed up</div>
+                            <div class="shortcut-item"><span class="shortcut-key">↓</span> Slow down</div>
+                            <div class="shortcut-item"><span class="shortcut-key">Shift+←/→</span> 10s skip</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="fullTextView" class="full-text-view">
+                    <div class="full-text-header">
+                        <h3>Full Text</h3>
+                        <div class="full-text-controls">
+                            <span class="full-text-size-label">Size:</span>
+                            <button class="text-size-btn" id="textSizeDown">A-</button>
+                            <button class="text-size-btn" id="textSizeUp">A+</button>
+                            <button class="control-btn" id="backToReaderBtn">← Back</button>
+                        </div>
+                    </div>
+                    <div id="fullTextContent" class="full-text-content"></div>
+                </div>
+            </main>
+        </div>
+
+        <div id="settingsPanel" class="settings-panel">
+            <div class="settings-tabs">
+                <button class="settings-tab active" data-tab="general">General</button>
+                <button class="settings-tab" data-tab="colors">Colors</button>
+            </div>
+
+            <div id="tabGeneral" class="settings-tab-content active">
+                <div class="settings-grid">
+                    <div class="setting-group">
+                        <label class="setting-label">Font Size</label>
+                        <div class="setting-control">
+                            <input type="range" id="fontSizeSlider" min="1" max="5" value="3" step="1">
+                            <span id="fontSizeValue">3rem</span>
+                        </div>
+                    </div>
+
+                    <div class="setting-group">
+                        <label class="setting-label">Font Family</label>
+                        <select id="fontFamilySelect">
+                            <option value="'Segoe UI', Tahoma, Geneva, Verdana, sans-serif">Segoe UI</option>
+                            <option value="Arial, sans-serif">Arial</option>
+                            <option value="Georgia, serif">Georgia</option>
+                            <option value="'Times New Roman', serif">Times New Roman</option>
+                            <option value="'Courier New', monospace">Courier New</option>
+                            <option value="Verdana, sans-serif">Verdana</option>
+                            <option value="'Open Sans', sans-serif">Open Sans</option>
+                        </select>
+                    </div>
+
+                    <div class="setting-group">
+                        <label class="setting-label">Word Length Adjustment</label>
+                        <div class="setting-control">
+                            <div id="wordLengthToggle" class="toggle-switch active"></div>
+                            <span>Pause longer on long words</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div id="tabColors" class="settings-tab-content">
+                <div class="color-grid">
+                    <div class="color-item">
+                        <label>Page Background</label>
+                        <input type="color" id="bgColorPicker" value="#1a1a2e">
+                    </div>
+                    <div class="color-item">
+                        <label>Card/Box Background</label>
+                        <input type="color" id="boxColorPicker" value="#16213e">
+                    </div>
+                    <div class="color-item">
+                        <label>Reader Area Background</label>
+                        <input type="color" id="readerBgColorPicker" value="#0f3460">
+                    </div>
+                    <div class="color-item">
+                        <label>Text Color</label>
+                        <input type="color" id="textColorPicker" value="#eaeaea">
+                    </div>
+                    <div class="color-item">
+                        <label>Accent Color</label>
+                        <input type="color" id="accentColorPicker" value="#e94560">
+                    </div>
+                    <div class="color-item">
+                        <label>Border Color</label>
+                        <input type="color" id="borderColorPicker" value="#2a2a4a">
+                    </div>
+                </div>
+                <button id="resetAllColors" style="margin-top: 20px;">Reset All Colors</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="addTextModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Add Text</h2>
+                <button id="closeModalBtn" style="background: none; border: none; font-size: 1.5rem;">×</button>
+            </div>
+            <div class="modal-body">
+                <div class="modal-upload-section">
+                    <label for="modalFileInput" class="modal-upload-btn">
+                        <span>Upload File (PDF, EPUB, TXT)</span>
+                        <input type="file" id="modalFileInput" accept=".txt,.pdf,.epub,.doc,.docx" style="display: none;">
+                    </label>
+                    <span id="modalFileName" style="font-size: 0.85rem; color: var(--text-secondary);"></span>
+                </div>
+                <div style="text-align: center; margin: 15px 0; color: var(--text-secondary); font-size: 0.85rem;">— or paste text below —</div>
+                <input type="text" id="textTitleInput" placeholder="Title (optional)" style="width: 100%; padding: 10px; margin-bottom: 10px; background: var(--bg-tertiary); border: 1px solid var(--border); border-radius: 6px; color: var(--text-primary);">
+                <textarea id="textContentInput" placeholder="Paste your text here..."></textarea>
+            </div>
+            <div class="modal-footer">
+                <button id="cancelModalBtn">Cancel</button>
+                <button id="saveTextBtn" class="primary">Save</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="toast" class="toast">Progress saved</div>
+
+    <script>
+        // PDF.js worker
+        if (typeof pdfjsLib !== 'undefined') {
+            pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+        }
+
+        // State
+        let state = {
+            files: [],
+            currentFileId: null,
+            currentWordIndex: 0,
+            words: [],
+            isPlaying: false,
+            wpm: 300,
+            playInterval: null,
+            isDarkMode: true,
+            wordLengthAdjustment: true,
+            fullTextSize: 0.9,
+            fullTextPanelOpen: false,
+            settings: {
+                fontSize: 3,
+                fontFamily: "'Segoe UI', Tahoma, Geneva, Verdana, sans-serif",
+                bgColor: null,
+                boxColor: null,
+                readerBgColor: null,
+                textColor: null,
+                accentColor: null,
+                borderColor: null
+            }
+        };
+
+        // DOM Elements
+        const elements = {
+            fileList: document.getElementById('fileList'),
+            uploadArea: document.getElementById('uploadArea'),
+            pasteArea: document.getElementById('pasteArea'),
+            pasteTextarea: document.getElementById('pasteTextarea'),
+            fileInput: document.getElementById('fileInput'),
+            speedReaderView: document.getElementById('speedReaderView'),
+            wordDisplay: document.getElementById('wordDisplay'),
+            progressBar: document.getElementById('progressBar'),
+            progressBarContainer: document.getElementById('progressBarContainer'),
+            positionInfo: document.getElementById('positionInfo'),
+            percentInfo: document.getElementById('percentInfo'),
+            wpmValue: document.getElementById('wpmValue'),
+            playPauseBtn: document.getElementById('playPauseBtn'),
+            fullTextContent: document.getElementById('fullTextContent'),
+            fullTextView: document.getElementById('fullTextView'),
+            settingsPanel: document.getElementById('settingsPanel'),
+            addTextModal: document.getElementById('addTextModal'),
+            ocrStatus: document.getElementById('ocrStatus'),
+            ocrProgressBar: document.getElementById('ocrProgressBar'),
+            toast: document.getElementById('toast')
+        };
+
+        // Initialize
+        function init() {
+            loadState();
+            renderFileList();
+            setupEventListeners();
+            applySettings();
+            applyTheme();
+
+            if (state.currentFileId) {
+                loadFile(state.currentFileId);
+            }
+        }
+
+        // Local Storage
+        function saveState() {
+            const saveData = {
+                files: state.files,
+                currentFileId: state.currentFileId,
+                wpm: state.wpm,
+                isDarkMode: state.isDarkMode,
+                wordLengthAdjustment: state.wordLengthAdjustment,
+                fullTextSize: state.fullTextSize,
+                settings: state.settings
+            };
+            localStorage.setItem('speedReaderState', JSON.stringify(saveData));
+        }
+
+        function loadState() {
+            const saved = localStorage.getItem('speedReaderState');
+            if (saved) {
+                const data = JSON.parse(saved);
+                state.files = data.files || [];
+                state.currentFileId = data.currentFileId || null;
+                state.wpm = data.wpm || 300;
+                state.isDarkMode = data.isDarkMode !== undefined ? data.isDarkMode : true;
+                state.wordLengthAdjustment = data.wordLengthAdjustment !== undefined ? data.wordLengthAdjustment : true;
+                state.fullTextSize = data.fullTextSize || 0.9;
+                state.settings = data.settings || state.settings;
+            }
+        }
+
+        function saveProgress() {
+            if (state.currentFileId) {
+                const file = state.files.find(f => f.id === state.currentFileId);
+                if (file) {
+                    file.position = state.currentWordIndex;
+                    file.lastRead = Date.now();
+                    saveState();
+                }
+            }
+        }
+
+        // File Management
+        function generateId() {
+            return Date.now().toString(36) + Math.random().toString(36).substr(2);
+        }
+
+        function addFile(title, content) {
+            const words = content.split(/\s+/).filter(w => w.length > 0);
+            const file = {
+                id: generateId(),
+                title: title || `Document ${state.files.length + 1}`,
+                content: content,
+                wordCount: words.length,
+                position: 0,
+                created: Date.now(),
+                lastRead: Date.now()
+            };
+            state.files.unshift(file);
+            saveState();
+            renderFileList();
+            loadFile(file.id);
+        }
+
+        function deleteFile(id) {
+            state.files = state.files.filter(f => f.id !== id);
+            if (state.currentFileId === id) {
+                state.currentFileId = null;
+                state.words = [];
+                state.currentWordIndex = 0;
+                stopReading();
+                elements.speedReaderView.classList.add('hidden');
+                elements.uploadArea.classList.remove('hidden');
+                elements.pasteArea.classList.remove('hidden');
+            }
+            saveState();
+            renderFileList();
+        }
+
+        function loadFile(id) {
+            const file = state.files.find(f => f.id === id);
+            if (!file) return;
+
+            stopReading();
+            state.currentFileId = id;
+            state.words = file.content.split(/\s+/).filter(w => w.length > 0);
+            state.currentWordIndex = file.position || 0;
+
+            elements.uploadArea.classList.add('hidden');
+            elements.pasteArea.classList.add('hidden');
+            elements.speedReaderView.classList.remove('hidden');
+            elements.fullTextContent.textContent = file.content;
+
+            updateDisplay();
+            renderFileList();
+            saveState();
+        }
+
+        function renderFileList() {
+            if (state.files.length === 0) {
+                elements.fileList.innerHTML = '<p class="no-file-message">No files yet. Upload or paste text to begin.</p>';
+                return;
+            }
+
+            elements.fileList.innerHTML = state.files.map(file => {
+                const progress = file.wordCount > 0 ? (file.position / file.wordCount * 100) : 0;
+                const isActive = file.id === state.currentFileId;
+                return `
+                    <div class="file-item ${isActive ? 'active' : ''}" data-id="${file.id}">
+                        <div class="file-item-header">
+                            <span class="file-item-title">${escapeHtml(file.title)}</span>
+                            <button class="delete-file-btn" data-delete="${file.id}" title="Delete">×</button>
+                        </div>
+                        <div class="file-item-meta">${file.wordCount.toLocaleString()} words</div>
+                        <div class="file-item-progress">
+                            <div class="file-item-progress-bar" style="width: ${progress}%"></div>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+
+            // Add click handlers
+            elements.fileList.querySelectorAll('.file-item').forEach(item => {
+                item.addEventListener('click', (e) => {
+                    if (!e.target.classList.contains('delete-file-btn')) {
+                        loadFile(item.dataset.id);
+                    }
+                });
+            });
+
+            elements.fileList.querySelectorAll('.delete-file-btn').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    if (confirm('Delete this file?')) {
+                        deleteFile(btn.dataset.delete);
+                    }
+                });
+            });
+        }
+
+        // Speed Reading
+        function getFocalIndex(word) {
+            // Calculate focal position at or near the middle of the word
+            const len = word.replace(/[^\w]/g, '').length;
+            if (len <= 1) return 0;
+            // Return middle index (slightly left of center for even lengths)
+            return Math.floor((len - 1) / 2);
+        }
+
+        function renderWord(word) {
+            if (!word) {
+                return {
+                    left: '',
+                    focal: '',
+                    right: ''
+                };
+            }
+
+            // Find the focal index based on alphanumeric characters only
+            const focalIdx = getFocalIndex(word);
+
+            let left = '';
+            let focal = '';
+            let right = '';
+            let letterCount = 0;
+            let focalFound = false;
+
+            for (let i = 0; i < word.length; i++) {
+                const char = word[i];
+                const isLetter = /\w/.test(char);
+
+                if (isLetter) {
+                    if (letterCount === focalIdx && !focalFound) {
+                        focal = char;
+                        focalFound = true;
+                    } else if (!focalFound) {
+                        left += char;
+                    } else {
+                        right += char;
+                    }
+                    letterCount++;
+                } else {
+                    // Punctuation goes with the appropriate part
+                    if (!focalFound) {
+                        left += char;
+                    } else {
+                        right += char;
+                    }
+                }
+            }
+
+            return { left, focal, right };
+        }
+
+        function updateDisplay() {
+            const word = state.words[state.currentWordIndex] || '';
+            const parts = renderWord(word);
+
+            if (word) {
+                elements.wordDisplay.innerHTML =
+                    `<span class="word-left">${parts.left}</span>` +
+                    `<span class="focal-letter">${parts.focal}</span>` +
+                    `<span class="word-right">${parts.right}</span>`;
+            } else {
+                elements.wordDisplay.innerHTML =
+                    `<span class="word-left"></span>` +
+                    `<span class="focal-letter">R</span>` +
+                    `<span class="word-right">eady</span>`;
+            }
+
+            const total = state.words.length;
+            const current = state.currentWordIndex;
+            const percent = total > 0 ? Math.round((current / total) * 100) : 0;
+
+            elements.positionInfo.textContent = `Word ${current.toLocaleString()} of ${total.toLocaleString()}`;
+            elements.percentInfo.textContent = `${percent}%`;
+            elements.progressBar.style.width = `${percent}%`;
+            elements.wpmValue.textContent = state.wpm;
+
+            // Auto-scroll full text panel if open
+            if (state.fullTextPanelOpen && elements.fullTextPanel.classList.contains('visible')) {
+                const scrollTarget = elements.fullTextContent.scrollHeight * (current / total);
+                elements.fullTextContent.scrollTop = Math.max(0, scrollTarget - elements.fullTextContent.clientHeight / 2);
+            }
+        }
+
+        function getWordDelay(word) {
+            const baseDelay = 60000 / state.wpm;
+            if (!state.wordLengthAdjustment) return baseDelay;
+
+            const len = word.length;
+            let multiplier = 1;
+
+            if (len > 8) multiplier = 1.4;
+            else if (len > 6) multiplier = 1.2;
+
+            // Pause longer on punctuation
+            if (/[.!?]$/.test(word)) multiplier *= 1.5;
+            else if (/[,;:]$/.test(word)) multiplier *= 1.2;
+
+            return baseDelay * multiplier;
+        }
+
+        function playNextWord() {
+            if (state.currentWordIndex >= state.words.length - 1) {
+                stopReading();
+                showToast('Finished reading!');
+                return;
+            }
+
+            state.currentWordIndex++;
+            updateDisplay();
+
+            // Auto-save every 50 words
+            if (state.currentWordIndex % 50 === 0) {
+                saveProgress();
+            }
+
+            // Schedule next word with variable delay
+            const delay = getWordDelay(state.words[state.currentWordIndex]);
+            state.playInterval = setTimeout(playNextWord, delay);
+        }
+
+        function startReading() {
+            if (state.words.length === 0) return;
+
+            state.isPlaying = true;
+            elements.playPauseBtn.innerHTML = '⏸ Pause';
+
+            const delay = getWordDelay(state.words[state.currentWordIndex]);
+            state.playInterval = setTimeout(playNextWord, delay);
+        }
+
+        function stopReading() {
+            state.isPlaying = false;
+            elements.playPauseBtn.innerHTML = '▶ Play';
+
+            if (state.playInterval) {
+                clearTimeout(state.playInterval);
+                state.playInterval = null;
+            }
+            saveProgress();
+        }
+
+        function togglePlayPause() {
+            if (state.isPlaying) {
+                stopReading();
+            } else {
+                startReading();
+            }
+        }
+
+        function adjustSpeed(delta) {
+            state.wpm = Math.max(50, Math.min(1000, state.wpm + delta));
+            elements.wpmValue.textContent = state.wpm;
+            saveState();
+
+            if (state.isPlaying) {
+                stopReading();
+                startReading();
+            }
+        }
+
+        function seekWords(seconds) {
+            const wordsToSkip = Math.round((state.wpm / 60) * seconds);
+            state.currentWordIndex = Math.max(0, Math.min(state.words.length - 1, state.currentWordIndex + wordsToSkip));
+            updateDisplay();
+            saveProgress();
+
+            if (state.isPlaying) {
+                clearTimeout(state.playInterval);
+                const delay = getWordDelay(state.words[state.currentWordIndex]);
+                state.playInterval = setTimeout(playNextWord, delay);
+            }
+        }
+
+        // File Processing
+        async function processFile(file) {
+            const type = file.type;
+            const name = file.name;
+
+            try {
+                if (type === 'text/plain' || name.endsWith('.txt')) {
+                    const text = await file.text();
+                    addFile(name, text);
+                } else if (type === 'application/pdf' || name.endsWith('.pdf')) {
+                    await processPDF(file, name);
+                } else if (name.endsWith('.epub')) {
+                    await processEPUB(file, name);
+                } else if (type.startsWith('image/')) {
+                    await processImage(file, name);
+                } else if (name.endsWith('.doc') || name.endsWith('.docx') || name.endsWith('.rtf')) {
+                    // For DOC files, try to read as text (basic support)
+                    const text = await file.text();
+                    // Clean up any binary garbage
+                    const cleanText = text.replace(/[^\x20-\x7E\n\r\t]/g, ' ').replace(/\s+/g, ' ').trim();
+                    if (cleanText.length > 50) {
+                        addFile(name, cleanText);
+                    } else {
+                        alert('Could not extract text from this file. Try converting to PDF or TXT first.');
+                    }
+                } else {
+                    // Try as plain text
+                    const text = await file.text();
+                    addFile(name, text);
+                }
+            } catch (error) {
+                console.error('Error processing file:', error);
+                alert('Error processing file: ' + error.message);
+            }
+        }
+
+        async function processPDF(file, name) {
+            elements.ocrStatus.classList.remove('hidden');
+            elements.ocrStatus.querySelector('div').textContent = 'Extracting text from PDF...';
+            elements.ocrProgressBar.style.width = '0%';
+
+            try {
+                const arrayBuffer = await file.arrayBuffer();
+                const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+                let fullText = '';
+
+                for (let i = 1; i <= pdf.numPages; i++) {
+                    const page = await pdf.getPage(i);
+                    const textContent = await page.getTextContent();
+                    const pageText = textContent.items.map(item => item.str).join(' ');
+                    fullText += pageText + '\n\n';
+                    elements.ocrProgressBar.style.width = `${(i / pdf.numPages) * 100}%`;
+                }
+
+                fullText = fullText.trim();
+
+                if (fullText.length < 50) {
+                    // PDF might be image-based, try OCR
+                    elements.ocrStatus.querySelector('div').textContent = 'PDF appears to be image-based. Running OCR...';
+                    fullText = await ocrPDF(pdf);
+                }
+
+                elements.ocrStatus.classList.add('hidden');
+                addFile(name, fullText);
+            } catch (error) {
+                elements.ocrStatus.classList.add('hidden');
+                throw error;
+            }
+        }
+
+        async function ocrPDF(pdf) {
+            let fullText = '';
+            const canvas = document.createElement('canvas');
+            const ctx = canvas.getContext('2d');
+
+            for (let i = 1; i <= pdf.numPages; i++) {
+                const page = await pdf.getPage(i);
+                const viewport = page.getViewport({ scale: 2 });
+                canvas.width = viewport.width;
+                canvas.height = viewport.height;
+
+                await page.render({ canvasContext: ctx, viewport }).promise;
+
+                const { data: { text } } = await Tesseract.recognize(canvas, 'eng', {
+                    logger: m => {
+                        if (m.status === 'recognizing text') {
+                            const pageProgress = (i - 1) / pdf.numPages;
+                            const ocrProgress = m.progress / pdf.numPages;
+                            elements.ocrProgressBar.style.width = `${(pageProgress + ocrProgress) * 100}%`;
+                        }
+                    }
+                });
+
+                fullText += text + '\n\n';
+            }
+
+            return fullText.trim();
+        }
+
+        async function processImage(file, name) {
+            elements.ocrStatus.classList.remove('hidden');
+            elements.ocrStatus.querySelector('div').textContent = 'Running OCR on image...';
+            elements.ocrProgressBar.style.width = '0%';
+
+            try {
+                const { data: { text } } = await Tesseract.recognize(file, 'eng', {
+                    logger: m => {
+                        if (m.status === 'recognizing text') {
+                            elements.ocrProgressBar.style.width = `${m.progress * 100}%`;
+                        }
+                    }
+                });
+
+                elements.ocrStatus.classList.add('hidden');
+
+                if (text.trim().length < 10) {
+                    alert('Could not extract meaningful text from this image.');
+                    return;
+                }
+
+                addFile(name, text.trim());
+            } catch (error) {
+                elements.ocrStatus.classList.add('hidden');
+                throw error;
+            }
+        }
+
+        async function processEPUB(file, name) {
+            elements.ocrStatus.classList.remove('hidden');
+            elements.ocrStatus.querySelector('div').textContent = 'Extracting text from EPUB...';
+            elements.ocrProgressBar.style.width = '0%';
+
+            try {
+                const arrayBuffer = await file.arrayBuffer();
+                const zip = await JSZip.loadAsync(arrayBuffer);
+
+                // Find content files (usually in OEBPS or similar)
+                const htmlFiles = [];
+                zip.forEach((relativePath, zipEntry) => {
+                    if (relativePath.endsWith('.html') || relativePath.endsWith('.xhtml') || relativePath.endsWith('.htm')) {
+                        htmlFiles.push({ path: relativePath, entry: zipEntry });
+                    }
+                });
+
+                // Sort files to maintain chapter order (basic sorting by name)
+                htmlFiles.sort((a, b) => a.path.localeCompare(b.path));
+
+                let fullText = '';
+                let processed = 0;
+
+                for (const { entry } of htmlFiles) {
+                    const content = await entry.async('string');
+                    // Strip HTML tags and extract text
+                    const textContent = content
+                        .replace(/<script[^>]*>[\s\S]*?<\/script>/gi, '')
+                        .replace(/<style[^>]*>[\s\S]*?<\/style>/gi, '')
+                        .replace(/<[^>]+>/g, ' ')
+                        .replace(/&nbsp;/g, ' ')
+                        .replace(/&amp;/g, '&')
+                        .replace(/&lt;/g, '<')
+                        .replace(/&gt;/g, '>')
+                        .replace(/&quot;/g, '"')
+                        .replace(/&#(\d+);/g, (_, code) => String.fromCharCode(code))
+                        .replace(/\s+/g, ' ')
+                        .trim();
+
+                    if (textContent.length > 0) {
+                        fullText += textContent + '\n\n';
+                    }
+
+                    processed++;
+                    elements.ocrProgressBar.style.width = `${(processed / htmlFiles.length) * 100}%`;
+                }
+
+                elements.ocrStatus.classList.add('hidden');
+
+                if (fullText.trim().length < 50) {
+                    alert('Could not extract meaningful text from this EPUB.');
+                    return;
+                }
+
+                addFile(name, fullText.trim());
+            } catch (error) {
+                elements.ocrStatus.classList.add('hidden');
+                throw error;
+            }
+        }
+
+        // UI Helpers
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        function showToast(message) {
+            elements.toast.textContent = message;
+            elements.toast.classList.add('visible');
+            setTimeout(() => {
+                elements.toast.classList.remove('visible');
+            }, 2000);
+        }
+
+        function applyTheme() {
+            if (state.isDarkMode) {
+                document.body.classList.remove('light-mode');
+                document.getElementById('themeToggle').innerHTML = '☀ Light';
+            } else {
+                document.body.classList.add('light-mode');
+                document.getElementById('themeToggle').innerHTML = '🌙 Dark';
+            }
+        }
+
+        function applySettings() {
+            const sizes = ['1.5rem', '2rem', '3rem', '4rem', '5rem'];
+            document.documentElement.style.setProperty('--reader-font-size', sizes[state.settings.fontSize - 1]);
+            document.getElementById('fontSizeValue').textContent = sizes[state.settings.fontSize - 1];
+            document.getElementById('fontSizeSlider').value = state.settings.fontSize;
+
+            document.documentElement.style.setProperty('--font-family', state.settings.fontFamily);
+            document.getElementById('fontFamilySelect').value = state.settings.fontFamily;
+
+            // Apply color settings
+            const colorMappings = [
+                { key: 'bgColor', cssVar: '--bg-primary', picker: 'bgColorPicker', default: '#1a1a2e' },
+                { key: 'boxColor', cssVar: '--bg-secondary', picker: 'boxColorPicker', default: '#16213e' },
+                { key: 'readerBgColor', cssVar: '--bg-tertiary', picker: 'readerBgColorPicker', default: '#0f3460' },
+                { key: 'textColor', cssVar: '--text-primary', picker: 'textColorPicker', default: '#eaeaea' },
+                { key: 'accentColor', cssVar: '--accent', picker: 'accentColorPicker', default: '#e94560' },
+                { key: 'borderColor', cssVar: '--border', picker: 'borderColorPicker', default: '#2a2a4a' }
+            ];
+
+            colorMappings.forEach(({ key, cssVar, picker, default: defaultVal }) => {
+                const el = document.getElementById(picker);
+                if (state.settings[key]) {
+                    document.documentElement.style.setProperty(cssVar, state.settings[key]);
+                    if (el) el.value = state.settings[key];
+                } else {
+                    if (el) el.value = defaultVal;
+                }
+            });
+
+            const wordLengthToggle = document.getElementById('wordLengthToggle');
+            if (state.wordLengthAdjustment) {
+                wordLengthToggle.classList.add('active');
+            } else {
+                wordLengthToggle.classList.remove('active');
+            }
+        }
+
+        // Event Listeners
+        function setupEventListeners() {
+            // Upload
+            elements.uploadArea.addEventListener('click', () => elements.fileInput.click());
+            elements.fileInput.addEventListener('change', (e) => {
+                if (e.target.files[0]) {
+                    processFile(e.target.files[0]);
+                }
+            });
+
+            // Paste area
+            document.getElementById('startReadingBtn').addEventListener('click', () => {
+                const content = elements.pasteTextarea.value.trim();
+                if (content) {
+                    addFile('Pasted Text', content);
+                    elements.pasteTextarea.value = '';
+                }
+            });
+
+            // Drag and drop
+            elements.uploadArea.addEventListener('dragover', (e) => {
+                e.preventDefault();
+                elements.uploadArea.classList.add('dragover');
+            });
+            elements.uploadArea.addEventListener('dragleave', () => {
+                elements.uploadArea.classList.remove('dragover');
+            });
+            elements.uploadArea.addEventListener('drop', (e) => {
+                e.preventDefault();
+                elements.uploadArea.classList.remove('dragover');
+                if (e.dataTransfer.files[0]) {
+                    processFile(e.dataTransfer.files[0]);
+                }
+            });
+
+            // Playback controls
+            elements.playPauseBtn.addEventListener('click', togglePlayPause);
+            document.getElementById('rewind5Btn').addEventListener('click', () => seekWords(-5));
+            document.getElementById('rewind10Btn').addEventListener('click', () => seekWords(-10));
+            document.getElementById('forward5Btn').addEventListener('click', () => seekWords(5));
+            document.getElementById('forward10Btn').addEventListener('click', () => seekWords(10));
+            document.getElementById('slowDownBtn').addEventListener('click', () => adjustSpeed(-25));
+            document.getElementById('speedUpBtn').addEventListener('click', () => adjustSpeed(25));
+
+            // Progress bar seeking
+            function seekToPosition(e) {
+                if (state.words.length === 0) return;
+                const rect = elements.progressBarContainer.getBoundingClientRect();
+                const percent = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
+                state.currentWordIndex = Math.floor(percent * (state.words.length - 1));
+                updateDisplay();
+                saveProgress();
+            }
+
+            elements.progressBarContainer.addEventListener('click', seekToPosition);
+
+            let isDragging = false;
+            elements.progressBarContainer.addEventListener('mousedown', (e) => {
+                isDragging = true;
+                seekToPosition(e);
+            });
+            document.addEventListener('mousemove', (e) => {
+                if (isDragging) {
+                    seekToPosition(e);
+                }
+            });
+            document.addEventListener('mouseup', () => {
+                isDragging = false;
+            });
+
+            // Full text view toggle
+            function updateFullTextSize() {
+                document.documentElement.style.setProperty('--full-text-size', state.fullTextSize + 'rem');
+            }
+            updateFullTextSize();
+
+            document.getElementById('viewFullTextBtn').addEventListener('click', () => {
+                stopReading();
+                elements.speedReaderView.classList.add('hidden');
+                elements.fullTextView.classList.add('visible');
+
+                // Scroll to current position
+                if (state.words.length > 0) {
+                    const progress = state.currentWordIndex / state.words.length;
+                    const scrollTarget = elements.fullTextContent.scrollHeight * progress;
+                    elements.fullTextContent.scrollTop = Math.max(0, scrollTarget - elements.fullTextContent.clientHeight / 2);
+                }
+            });
+
+            document.getElementById('backToReaderBtn').addEventListener('click', () => {
+                elements.fullTextView.classList.remove('visible');
+                elements.speedReaderView.classList.remove('hidden');
+            });
+
+            document.getElementById('textSizeUp').addEventListener('click', () => {
+                state.fullTextSize = Math.min(1.5, state.fullTextSize + 0.1);
+                updateFullTextSize();
+                saveState();
+            });
+
+            document.getElementById('textSizeDown').addEventListener('click', () => {
+                state.fullTextSize = Math.max(0.6, state.fullTextSize - 0.1);
+                updateFullTextSize();
+                saveState();
+            });
+
+            // Settings
+            document.getElementById('settingsBtn').addEventListener('click', () => {
+                elements.settingsPanel.classList.toggle('visible');
+            });
+
+            document.getElementById('themeToggle').addEventListener('click', () => {
+                state.isDarkMode = !state.isDarkMode;
+                applyTheme();
+                saveState();
+            });
+
+            document.getElementById('fontSizeSlider').addEventListener('input', (e) => {
+                state.settings.fontSize = parseInt(e.target.value);
+                applySettings();
+                saveState();
+            });
+
+            document.getElementById('fontFamilySelect').addEventListener('change', (e) => {
+                state.settings.fontFamily = e.target.value;
+                applySettings();
+                saveState();
+            });
+
+            document.getElementById('wordLengthToggle').addEventListener('click', (e) => {
+                state.wordLengthAdjustment = !state.wordLengthAdjustment;
+                e.target.classList.toggle('active');
+                saveState();
+            });
+
+            // Settings tabs
+            document.querySelectorAll('.settings-tab').forEach(tab => {
+                tab.addEventListener('click', () => {
+                    document.querySelectorAll('.settings-tab').forEach(t => t.classList.remove('active'));
+                    document.querySelectorAll('.settings-tab-content').forEach(c => c.classList.remove('active'));
+                    tab.classList.add('active');
+                    document.getElementById('tab' + tab.dataset.tab.charAt(0).toUpperCase() + tab.dataset.tab.slice(1)).classList.add('active');
+                });
+            });
+
+            // Color pickers
+            const colorMappings = [
+                { key: 'bgColor', cssVar: '--bg-primary', picker: 'bgColorPicker' },
+                { key: 'boxColor', cssVar: '--bg-secondary', picker: 'boxColorPicker' },
+                { key: 'readerBgColor', cssVar: '--bg-tertiary', picker: 'readerBgColorPicker' },
+                { key: 'textColor', cssVar: '--text-primary', picker: 'textColorPicker' },
+                { key: 'accentColor', cssVar: '--accent', picker: 'accentColorPicker' },
+                { key: 'borderColor', cssVar: '--border', picker: 'borderColorPicker' }
+            ];
+
+            colorMappings.forEach(({ key, cssVar, picker }) => {
+                document.getElementById(picker).addEventListener('input', (e) => {
+                    state.settings[key] = e.target.value;
+                    document.documentElement.style.setProperty(cssVar, e.target.value);
+                    saveState();
+                });
+            });
+
+            document.getElementById('resetAllColors').addEventListener('click', () => {
+                state.settings.bgColor = null;
+                state.settings.boxColor = null;
+                state.settings.readerBgColor = null;
+                state.settings.textColor = null;
+                state.settings.accentColor = null;
+                state.settings.borderColor = null;
+                ['--bg-primary', '--bg-secondary', '--bg-tertiary', '--text-primary', '--accent', '--border'].forEach(v => {
+                    document.documentElement.style.removeProperty(v);
+                });
+                applySettings();
+                saveState();
+            });
+
+            // Add text modal
+            document.getElementById('addTextBtn').addEventListener('click', () => {
+                elements.addTextModal.classList.add('visible');
+                document.getElementById('textTitleInput').value = '';
+                document.getElementById('textContentInput').value = '';
+                document.getElementById('modalFileInput').value = '';
+                document.getElementById('modalFileName').textContent = '';
+            });
+
+            // Modal file upload
+            document.getElementById('modalFileInput').addEventListener('change', async (e) => {
+                const file = e.target.files[0];
+                if (file) {
+                    document.getElementById('modalFileName').textContent = file.name;
+                    elements.addTextModal.classList.remove('visible');
+                    await processFile(file);
+                }
+            });
+
+            document.getElementById('closeModalBtn').addEventListener('click', () => {
+                elements.addTextModal.classList.remove('visible');
+            });
+
+            document.getElementById('cancelModalBtn').addEventListener('click', () => {
+                elements.addTextModal.classList.remove('visible');
+            });
+
+            document.getElementById('saveTextBtn').addEventListener('click', () => {
+                const title = document.getElementById('textTitleInput').value.trim();
+                const content = document.getElementById('textContentInput').value.trim();
+                if (content) {
+                    addFile(title || 'Pasted Text', content);
+                    elements.addTextModal.classList.remove('visible');
+                }
+            });
+
+            // Click outside modal to close
+            elements.addTextModal.addEventListener('click', (e) => {
+                if (e.target === elements.addTextModal) {
+                    elements.addTextModal.classList.remove('visible');
+                }
+            });
+
+            // Keyboard shortcuts
+            document.addEventListener('keydown', (e) => {
+                // Ignore if typing in input/textarea
+                if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+
+                if (!state.currentFileId) return;
+
+                switch (e.code) {
+                    case 'Space':
+                        e.preventDefault();
+                        togglePlayPause();
+                        break;
+                    case 'ArrowLeft':
+                        e.preventDefault();
+                        seekWords(e.shiftKey ? -10 : -5);
+                        break;
+                    case 'ArrowRight':
+                        e.preventDefault();
+                        seekWords(e.shiftKey ? 10 : 5);
+                        break;
+                    case 'ArrowUp':
+                        e.preventDefault();
+                        adjustSpeed(25);
+                        break;
+                    case 'ArrowDown':
+                        e.preventDefault();
+                        adjustSpeed(-25);
+                        break;
+                }
+            });
+
+            // Save progress on page unload
+            window.addEventListener('beforeunload', () => {
+                saveProgress();
+            });
+
+            // Auto-save periodically
+            setInterval(saveProgress, 30000);
+        }
+
+        // Start the app
+        init();
+    </script>
+</body>
+</html>
